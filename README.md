@@ -23,4 +23,9 @@ To setup your method you would do something like this.
     $plugin = new MyPlugin();
     $plugin->my_method( 'foo', 'bar' );
 
-The method will be registered to the hook using the settings defined in the $method_hooks array (defaulting to `array('init', 10, 0)` if nothing is found for the method), and when the hook is fired, the method will run with both the hooks arguments and the custom ones passed during setup.
+The method will be registered to the hook using the settings defined in the `$method_hooks` array (defaulting to `array('init', 10, 0)` if nothing is found for the method), and when the hook is fired, the method will run with both the hooks arguments and the custom ones passed during setup.
+
+You can also use it to save a callback but not attach it to a hook; it will return the callable array, allowing you to pass it as a callback with custom arguments you want used. To do this, you would use `save_callback` or `save_static_callback` depending on context, passing the method name, the arguments array, and if needed the number of hook arguments to expect when the callback is called (defaults to 0).
+
+    $callback = $plugin->save_callback( 'my_method', array( 'foo', 'bar' ), 2 );
+    $callback = MyPlugin::save_static_callback( 'my_method', array( 'foo', 'bar' ), 2 );
