@@ -11,6 +11,14 @@ abstract class Smart_Plugin{
 	// =========================
 
 	/**
+	 * A list of internal methods and their hooks names.
+	 *
+	 * @access protected
+	 * @var array
+	 */
+	protected static $method_hooks = array();
+
+	/**
 	 * Save the callback.
 	 *
 	 * @param string $method The name of the method to setup the hook for.
@@ -20,12 +28,11 @@ abstract class Smart_Plugin{
 	 *                       Pass integer to skip hook setup (specifies accepted args).
 	 * @param array &$list   The callbacks list to use (passed by reference).
 	 * @param int   &$count  The callback counter to use (passed by reference).
-	 * @param array  $hooks  The method hooks list to use.
 	 * @param object $object Either $this for instantiated or get_called_class() for static.
 	 *
 	 * @return array $callback The callback array that was created.
 	 */
-	protected static function _do_save_callback( $method, $args, $hook, &$list, &$count, $hooks, $object ) {
+	protected static function _do_save_callback( $method, $args, $hook, &$list, &$count, $object ) {
 		if ( ! method_exists( $object, $method )
 		  && ! method_exists( $object, "_$method" ) ) {
 			return;
@@ -33,8 +40,8 @@ abstract class Smart_Plugin{
 
 		if ( is_null( $hook ) ) {
 			// Default to init hook or a defined on if set for this method
-			if ( isset( $hooks[ $method ] ) ) {
-				$hook = $hooks[ $method ];
+			if ( isset( static::$method_hooks[ $method ] ) ) {
+				$hook = static::$method_hooks[ $method ];
 			} else {
 				$hook = array( 'init', 10, 0 );
 			}
@@ -128,14 +135,6 @@ abstract class Smart_Plugin{
 	protected $callback_count = 0;
 
 	/**
-	 * A list of internal methods and their hooks names.
-	 *
-	 * @access protected
-	 * @var array
-	 */
-	protected $method_hooks = array();
-
-	/**
 	 * Method overloader; handle hook setup/callback for the true method.
 	 *
 	 * @param string $name The name of the method being called.
@@ -162,7 +161,7 @@ abstract class Smart_Plugin{
 	 * @see Smart_Plugin::_do_save_callback()
 	 */
 	protected function save_callback( $method, $args, $hook = null ) {
-		return static::_do_save_callback( $method, $args, $hook, $this->callbacks, $this->callback_count, $this->method_hooks, $this );
+		return static::_do_save_callback( $method, $args, $hook, $this->callbacks, $this->callback_count, $this );
 	}
 
 	/**
@@ -195,14 +194,6 @@ abstract class Smart_Plugin{
 	protected static $static_callback_count = 0;
 
 	/**
-	 * A list of internal methods and their hooks names (static version).
-	 *
-	 * @access protected
-	 * @var array
-	 */
-	protected static $static_method_hooks = array();
-
-	/**
 	 * Static version of the method overloader.
 	 *
 	 * @see SmartPlugin::__call() for details.
@@ -228,7 +219,7 @@ abstract class Smart_Plugin{
 	 * @see SmartPlugin::do_save_callback() for details.
 	 */
 	protected static function save_static_callback( $method, $args, $hook = null ) {
-		return static::_do_save_callback( $method, $args, $hook, static::$static_callbacks, static::$static_callback_count, static::$static_method_hooks, get_called_class() );
+		return static::_do_save_callback( $method, $args, $hook, static::$static_callbacks, static::$static_callback_count, get_called_class() );
 	}
 
 	/**
