@@ -29,3 +29,8 @@ You can also use it to save a callback but not attach it to a hook; it will retu
 
     $callback = $plugin->save_callback( 'my_method', array( 'foo', 'bar' ), 2 );
     $callback = MyPlugin::save_static_callback( 'my_method', array( 'foo', 'bar' ), 2 );
+
+## Todo
+
+- Possibly add tools for removing registered hooks without knowing the callback ID.
+- Figure out a way to have a shared method that works in both instantiated and static contexts (PHP seems really buggy with `$this` when calling a static method inside an instantiated one).
