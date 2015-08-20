@@ -114,6 +114,82 @@ abstract class Smart_Plugin{
 		return call_user_func_array( array( $object, $method ), $args );
 	}
 
+	/**
+	 * Remove any and all instances of a callback for the specified method
+	 * (and hook/priority).
+	 *
+	 * @param string $id     The ID of the callback to load.
+	 * @param mixed  $hook   The hook to attach this to (name or name/priority array,
+	 *                       defaults to init or any hook registered for the method).
+	 * @param array  $list   The callbacks list to use.
+	 * @param object $object Either $this for instantiated or get_called_class() for static.
+	 *
+	 * @return int The number of callbacks removed.
+	 */
+	protected static function _do_drop_callback( $method, $hook, $priority, &$list, $object ) {
+		// Make sure the method exists (check protected underscored version as well)
+		if ( ! method_exists( $object, $method )
+		  && ! method_exists( $object, "_$method" ) ) {
+			return;
+		}
+
+		if ( is_null( $hook ) ) {
+			// Default to init hook or a defined on if set for this method
+			if ( isset( static::$method_hooks[ $method ] ) ) {
+				$hook = static::$method_hooks[ $method ];
+			} else {
+				$hook = array( 'init', 10 );
+			}
+		} elseif ( is_string( $hook ) ) {
+			// Math this hook but for any priority
+			$hook = array( $hook, -1 );
+		} elseif ( $hook === true ) {
+			// Match any hook and priority
+			$hook = array( true, -1 );
+		}
+
+		// Override priority if passed as separate argument
+		if ( ! is_null( $priority ) ) {
+			$hook[1] = $priority;
+		}
+
+		// Ensure the hook is in the proper form (name, priority)
+		$hook = (array) $hook + array( 'init', 10 );
+
+		// Get the hook details (don't need arguments)
+		list( $tags, $priority ) = $hook;
+
+		// Count of hooks removed
+		$removed = 0;
+
+		// Now, go through the callbacks list and find a match
+		foreach( $list as $id => $callback ) {
+			list( $cb_method, $cb_args, $cb_hook ) = $callback;
+
+			// Skip if not the correct method
+			if ( $cb_method != $method ) {
+				continue;
+			}
+
+			// Skip if hook name doesn't match
+			if ( $cb_hook[0] !== $hook[0] && $hook !== true ) {
+				continue;
+			}
+
+			// Skip if hook priority doesn't match
+			if ( $cb_hook[1] !== $hook[1] && $hook[1] !== -1 ) {
+				continue;
+			}
+
+			// Remove the hook
+			if ( remove_filter( $cb_hook[0], array( $object, "cb$id" ), $cb_hook[1] ) ) {
+				$removed++;
+			}
+		}
+
+		return $removed;
+	}
+
 	// =========================
 	// !Instantiated Version
 	// =========================
@@ -149,6 +225,8 @@ abstract class Smart_Plugin{
 		 */
 		if ( $method == 'setup_callback' ) {
 			return call_user_func_array( array( $this, 'save_callback' ), $args );
+		} elseif ( $method == 'remove_callback' ) {
+			return call_user_func_array( array( $this, 'drop_callback' ), $args );
 		} elseif ( method_exists( $this, "_$method" ) ) {
 			return $this->save_callback( $method, $args );
 		} elseif ( preg_match( '/^cb(\d+)/', $method, $matches ) ) {
@@ -174,6 +252,15 @@ abstract class Smart_Plugin{
 	 */
 	protected function load_callback( $id, $_args ) {
 		return static::_do_load_callback( $id, $_args, $this->callbacks, $this );
+	}
+
+	/**
+	 * Find the requested callback and remove it.
+	 *
+	 * @see SmartPlugin::do_drop_callback()
+	 */
+	protected function drop_callback( $method, $hook, $priority = null ) {
+		return static::_do_drop_callback( $method, $hook, $priority, $this->callbacks, $this );
 	}
 
 	// =========================
@@ -210,6 +297,8 @@ abstract class Smart_Plugin{
 		 */
 		if ( $method == 'setup_callback' ) {
 			return call_user_func_array( array( get_called_class(), 'save_static_callback' ), $args );
+		} elseif ( $method == 'remove_callback' ) {
+			return call_user_func_array( array( get_called_class(), 'drop_static_callback' ), $args );
 		} elseif ( method_exists( get_called_class(), "_$method" ) ) {
 			return static::save_static_callback( $method, $args );
 		} elseif ( preg_match( '/^cb(\d+)/', $method, $matches ) ) {
@@ -235,5 +324,14 @@ abstract class Smart_Plugin{
 	 */
 	protected static function load_static_callback( $id, $_args ) {
 		return static::_do_load_callback( $id, $_args, static::$static_callbacks, get_called_class() );
+	}
+
+	/**
+	 * Find the requested callback and remove it.
+	 *
+	 * @see SmartPlugin::do_drop_callback().
+	 */
+	protected static function drop_static_callback( $method, $hook, $priority = null ) {
+		return static::_do_drop_callback( $method, $hook, $priority, static::$static_callbacks, get_called_class() );
 	}
 }
